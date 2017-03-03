@@ -2,7 +2,7 @@ public class TransactionDay
 {
     public enum Situation { INCREASING, STABLE, DECREASING }
 
-    public String industry;
+    public String name;
     public String date;
     public double capital;
     public double movingAverage;
@@ -11,6 +11,6 @@ public class TransactionDay
     
     public String toString()
     {
-        return industry + " " + date + " $" + capital + "\n";
+        return name + " " + date + " $" + capital + "\n";
     }
 } 
