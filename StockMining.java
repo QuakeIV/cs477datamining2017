@@ -84,8 +84,25 @@ public class StockMining
     {
     }
     
+
     private static void setupSituations(Collection<ArrayList<TransactionDay>> industries)
-    {
+    {                        
+        for(ArrayList<TransactionDay> list: industries){
+            for(TransactionDay t: list){
+                    if(t.capital > 1.25*t.movingAverage){
+                        t.situation = TransactionDay.Situation.INCREASING;
+                        println(t.toString() + t.situation);
+                    }
+                    if(t.capital < .75*t.movingAverage){
+                        t.situation = TransactionDay.Situation.DECREASING;
+                        println(t.toString() + t.situation);
+                    }
+                    else{
+                        t.situation = TransactionDay.Situation.STABLE;
+                        println(t.toString() + t.situation);
+                    }
+            }
+        }        
     }
     
     private static void alignData(Collection<ArrayList<TransactionDay>> industries)
@@ -102,7 +119,7 @@ public class StockMining
         
         
         Iterator<TransactionDay> reference = industryIterators.remove(industryIterators.size()-1);
-        String currentDate = reference.next();
+        String currentDate = reference.next().date;
         
         boolean allHaveNext = true;
         
@@ -111,22 +128,22 @@ public class StockMining
             boolean allequal = true;
             for(Iterator<TransactionDay> iter : industryIterators)
             {
-                String str = iter.next();
+                String str = iter.next().date;
                 
-                while(str.compare(currentDate) > 0)
+                while(str.compareTo(currentDate) > 0)
                 {
                     reference.remove();
-                    currentDate = reference.next();
+                    currentDate = reference.next().date;
                 }
                 
-                while (str.compare(currentDate) < 0)
+                while (str.compareTo(currentDate) < 0)
                 {
                     iter.remove();
                     iter.next();
                 }
             }
             
-            currentDate = reference.next();
+            currentDate = reference.next().date;
         }
         
         //at this point any tailing elements should be removed because at least one list ran out of elements, meaning there is no match for said tailing elements
@@ -164,9 +181,91 @@ public class StockMining
         pstmt.close();
 
         return industries;
-    }//end getIndustries
+    }//end getIndustries    
     
     
+    private static String[] getStartEndDates(ArrayList<String> industries)
+    throws SQLException
+    {
+        // Placeholder until actual dates calculated, to return
+        String[] dates = new String[]{"start", "end"};
+        // Find start/end for each industry first
+        ArrayList<String[]> allDates = new ArrayList<String[]>();
+        
+        for (String industry : industries)
+        {
+            PreparedStatement minDateStatement = conn.prepareStatement("select Ticker, TransDate from Company natural join PriceVolume where Industry = ? order by TransDate asc limit 1;");
+            minDateStatement.setString(1, industry);
+            ResultSet result = minDateStatement.executeQuery();
+            
+            String currStart = "";
+            
+            // Check for query result
+            if (result.next())
+            {
+                // Set the current start/end to first transaction
+                currStart = result.getString("TransDate");
+                
+            }
+            else
+            {
+                System.out.printf("No data. No analysis.%n");
+            }
+        
+        
+        
+            PreparedStatement maxDateStatement = conn.prepareStatement("select Ticker, TransDate from Company natural join PriceVolume where Industry = ? order by TransDate desc limit 1;");
+            maxDateStatement.setString(1, industry);
+            result = maxDateStatement.executeQuery();
+            
+            String currEnd = "";
+            
+            // Check for query result
+            if (result.next())
+            {
+                // Set the current start/end to first transaction
+                currEnd = result.getString("TransDate");
+                
+            }
+            else
+            {
+                System.out.printf("No data. No analysis.%n");
+            }
+            
+            maxDateStatement.close();
+            
+            
+            // Add Start/End for this industry to allDates
+            allDates.add(new String[]{currStart, currEnd});
+            
+            minDateStatement.close();
+            
+        }// end for each industry
+        
+        if (!allDates.isEmpty())
+        {
+            String[] currDates = allDates.get(0);
+            
+            for (String[] date : allDates)
+            {
+            if ((date[0].compareTo(currDates[0])) > 0)
+            {
+                currDates[0] = date[0];
+            }
+            if ((date[1].compareTo(currDates[1])) < 0)
+            {
+                currDates[1] = date[1];
+            }
+            }
+            
+            dates[0] = currDates[0];
+            dates[1] = currDates[1];
+        }
+
+        return dates;
+        
+    }// end getStartEndDates\
+
     
     private static ArrayList<TransactionDay> getIndustryData(String industry, String startDate, String endDate)
     throws SQLException
@@ -253,91 +352,8 @@ public class StockMining
         results = new ArrayList<TransactionDay>(results.subList(movingAverageWindow - 1, results.size()));
         
         return results;
-    }//end getIndustryData
+    }//end getIndustryData    
     
-    
-    
-    private static String[] getStartEndDates(ArrayList<String> industries)
-    throws SQLException
-    {
-        // Placeholder until actual dates calculated, to return
-        String[] dates = new String[]{"start", "end"};
-        // Find start/end for each industry first
-        ArrayList<String[]> allDates = new ArrayList<String[]>();
-        
-        for (String industry : industries)
-        {
-            PreparedStatement minDateStatement = conn.prepareStatement("select Ticker, TransDate from Company natural join PriceVolume where Industry = ? order by TransDate asc limit 1;");
-            minDateStatement.setString(1, industry);
-            ResultSet result = minDateStatement.executeQuery();
-            
-            String currStart = "";
-            
-            // Check for query result
-            if (result.next())
-            {
-                // Set the current start/end to first transaction
-                currStart = result.getString("TransDate");
-                
-            }
-            else
-            {
-                System.out.printf("No data. No analysis.%n");
-            }
-        
-        
-        
-            PreparedStatement maxDateStatement = conn.prepareStatement("select Ticker, TransDate from Company natural join PriceVolume where Industry = ? order by TransDate desc limit 1;");
-            maxDateStatement.setString(1, industry);
-            result = maxDateStatement.executeQuery();
-            
-            String currEnd = "";
-            
-            // Check for query result
-            if (result.next())
-            {
-                // Set the current start/end to first transaction
-                currEnd = result.getString("TransDate");
-                
-            }
-            else
-            {
-                System.out.printf("No data. No analysis.%n");
-            }
-            
-            maxDateStatement.close();
-            
-            
-            // Add Start/End for this industry to allDates
-            allDates.add(new String[]{currStart, currEnd});
-            
-            minDateStatement.close();
-            
-        }// end for each industry
-        
-        if (!allDates.isEmpty())
-        {
-            String[] currDates = allDates.get(0);
-            
-            for (String[] date : allDates)
-            {
-            if ((date[0].compareTo(currDates[0])) > 0)
-            {
-                currDates[0] = date[0];
-            }
-            if ((date[1].compareTo(currDates[1])) < 0)
-            {
-                currDates[1] = date[1];
-            }
-            }
-            
-            dates[0] = currDates[0];
-            dates[1] = currDates[1];
-        }
-
-        return dates;
-        
-    }// end getStartEndDates\
     
 }//end class
  
