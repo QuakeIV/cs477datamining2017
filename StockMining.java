@@ -123,23 +123,26 @@ public class StockMining
         
         boolean allHaveNext = true;
         
-        while(allHaveNext)
+        while(allHaveNext && reference.hasNext() )
         {
             boolean allequal = true;
             for(Iterator<TransactionDay> iter : industryIterators)
             {
-                String str = iter.next().date;
-                
-                while(str.compareTo(currentDate) > 0)
+                while(iter.hasNext())
                 {
-                    reference.remove();
-                    currentDate = reference.next().date;
-                }
-                
-                while (str.compareTo(currentDate) < 0)
-                {
-                    iter.remove();
-                    iter.next();
+                    String str = iter.next().date;
+                    
+                    while(str.compareTo(currentDate) > 0)
+                    {
+                        reference.remove();
+                        currentDate = reference.next().date;
+                    }
+                    
+                    while(    (str.compareTo(currentDate) < 0) && iter.hasNext() )
+                    {
+                        iter.remove();
+                        iter.next();
+                    }
                 }
             }
             
