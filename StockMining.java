@@ -20,7 +20,7 @@ public class StockMining
     private static int movingAverageWindow = 10; //in days
     
     
-    public static void main(String [] args)throws Exception
+    public static void main(String [] args) throws Exception
     {
         String readParamsFile = "readerparams.txt";
 
@@ -72,8 +72,21 @@ public class StockMining
             
             //align data (discard any dates that dont exist for ALL industries)
             alignData(allTransactions.values());
+            
+            //set situation values in transaction days
+            setupSituations(allTransactions.values());
+            
+            //determine relationships
+            analyzeData(allTransactions);
     }
     
+    private static void analyzeData(HashMap<String, ArrayList<TransactionDay>> allTransactions)
+    {
+    }
+    
+    private static void setupSituations(Collection<ArrayList<TransactionDay>> industries)
+    {
+    }
     
     private static void alignData(Collection<ArrayList<TransactionDay>> industries)
     {
