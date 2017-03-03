@@ -90,49 +90,43 @@ public class StockMining
     
     private static void alignData(Collection<ArrayList<TransactionDay>> industries)
     {
-        ArrayList<Iterator<TransactionDay>> industryIterators = new ArrayList<Iterator<TransactionDay>>();
-    
-        //get iterators for all of the lists
+        ArrayList<HashSet<String>> dateSetList = new ArrayList<HashSet<String>>();
+        
+        //set up the date set, to enable quick lookups of the existence of a date
         for (ArrayList<TransactionDay> transactionList : industries)
         {
-            industryIterators.add(transactionList.iterator());
+            HashSet<String> dateSet = new HashSet<String>();
+            for(TransactionDay day : transactionList)
+            {
+                dateSet.add(day.date);
+            }
+            dateSetList.add(dateSet);
         }
         
         //begin aligning the data
-        
-        
-        Iterator<TransactionDay> reference = industryIterators.remove(industryIterators.size()-1);
-        String currentDate = reference.next();
-        
-        boolean allHaveNext = true;
-        
-        while(allHaveNext)
+        for (ArrayList<TransactionDay> industry : industries)
         {
-            boolean allequal = true;
-            for(Iterator<TransactionDay> iter : industryIterators)
+            Iterator<TransactionDay> iter = industry.iterator();
+            while(iter.hasNext())
             {
-                String str = iter.next();
+                TransactionDay day = iter.next();
                 
-                while(str.compare(currentDate) > 0)
+                boolean existsInAll = true;
+                for(HashSet<String> dateSet : dateSetList)
                 {
-                    reference.remove();
-                    currentDate = reference.next();
+                    if (!dateSet.contains(day.date))
+                    {
+                        existsInAll = false;
+                        break;
+                    }
                 }
                 
-                while (str.compare(currentDate) < 0)
-                {
+                if(!existsInAll)
                     iter.remove();
-                    iter.next();
-                }
             }
-            
-            currentDate = reference.next();
         }
-        
-        //at this point any tailing elements should be removed because at least one list ran out of elements, meaning there is no match for said tailing elements
     }
-   
-   
+
    
     private static ArrayList<String> getIndustries() throws SQLException
     {
