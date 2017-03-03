@@ -89,6 +89,7 @@ public class StockMining
     }
     
     private static void outputItemsets(ArrayList<ArrayList<TransactionDay>> allItemsets)
+    throws FileNotFoundException, UnsupportedEncodingException
     {
         PrintWriter writer = new PrintWriter("data.dat", "UTF-8");
         
@@ -101,7 +102,7 @@ public class StockMining
                 line += item.industry + " ";
             }
             
-            line = line.substring(0, string.length() - 1);
+            line = line.substring(0, line.length() - 1);
             
             writer.println(line);
         }
@@ -193,6 +194,7 @@ public class StockMining
         
         //begin aligning the data
         for (ArrayList<TransactionDay> industry : industries)
+        {
             Iterator<TransactionDay> iter = industry.iterator();
             while(iter.hasNext())
             {
