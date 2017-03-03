@@ -15,13 +15,17 @@ public class StockMining
 {
     static Connection conn;
    
-    private static HashMap<String, Integer> industries;
+    private static HashMap<String, Integer> industryToInt;
+    private static HashMap<Integer, String> intToIndustry;
     private static ArrayList<double []> sectorMatrix;
     private static int movingAverageWindow = 10; //in days
     
     
     public static void main(String [] args) throws Exception
     {
+        industryToInt = new HashMap<String, Integer>();
+        intToIndustry = new HashMap<Integer, String>();
+    
         String readParamsFile = "readerparams.txt";
 
         Properties readProps = new Properties();
@@ -33,7 +37,7 @@ public class StockMining
             conn = DriverManager.getConnection(dburl, readProps);
 
             System.out.printf("Database connection %s %s established.%n", dburl, readProps.getProperty("user"));
-            doAnalysis();
+            doIndustrynAnalysis();
             conn.close();
         }
         catch(SQLException e)
@@ -47,7 +51,7 @@ public class StockMining
     private static void print(String s){System.out.print(s);}
       
     // Driving function
-    private static void doAnalysis() throws SQLException, Exception
+    private static void doIndustryAnalysis() throws SQLException, Exception
     {
         ArrayList<String> industries = getIndustries();
         
@@ -83,9 +87,43 @@ public class StockMining
         println("Creating Itemsets");
         ArrayList<ArrayList<TransactionDay>> allItemsets = createItemSets(allTransactions.values());
         
+        //mine for frequent closed itemsets
         println("Activating external library to mine for closed itemsets");
-        //mine for frequent 
         outputItemsets(allItemsets);
+        Runtime.getRuntime().exec("java -jar spmf.jar run FPClose data.dat output.dat 10%");
+        
+        //print analysis of output
+        translateOutput("output.dat");
+    }
+    
+    private static void translateOutput(String file)
+    throws FileNotFoundException
+    {
+        Scanner sc = new Scanner(new File(file));
+
+        while(sc.hasNextLine())
+        {
+            String raw = sc.nextLine();
+            String[] rawSplit = raw.split(" #SUP: ");
+            String support = rawSplit[1];
+            String[] itemset = rawSplit[0].split(" ");
+            
+            if(itemset.length > 1)
+            {
+                print("Itemset: ");
+                
+                int len = itemset.length;
+                
+                print(intToIndustry.get(Integer.valueOf(itemset[0])) + ", ");
+                
+                for (int i = 1; i < len; i++)
+                {
+                    print(intToIndustry.get(Integer.valueOf(itemset[i])));
+                }
+                
+                println(". Support: " + support);
+            }
+        }
     }
     
     private static void outputItemsets(ArrayList<ArrayList<TransactionDay>> allItemsets)
@@ -99,13 +137,23 @@ public class StockMining
             
             for (TransactionDay item : itemset)
             {
-                line += item.industry + " ";
+                String industry = item.industry;
+                Integer industryInt = industryToInt.get(industry);
+                
+                if(industryInt == null)
+                {
+                    println(industry);
+                }
+                
+                line += (industryToInt.get(item.industry) + " ");
             }
             
             line = line.substring(0, line.length() - 1);
             
             writer.println(line);
         }
+        
+        writer.close();
     }
     
     private static ArrayList<ArrayList<TransactionDay>> createItemSets(Collection<ArrayList<TransactionDay>> allTransactions)
@@ -231,12 +279,21 @@ public class StockMining
             // Get first result info
             String currIndustry = result.getString("Industry");
             industries.add(currIndustry);
+            
+            industryToInt.put(currIndustry, 0);
+            intToIndustry.put(0, currIndustry);
 
+            int i = 1;
             // Iterate through remaining results
             while (result.next())
             {
                 currIndustry = result.getString("Industry");
+                
+                industryToInt.put(currIndustry, i);
+                intToIndustry.put(i, currIndustry);
+                
                 industries.add(currIndustry);
+                i++;
             }
         }
         else
