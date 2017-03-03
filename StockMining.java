@@ -84,7 +84,27 @@ public class StockMining
         ArrayList<ArrayList<TransactionDay>> allItemsets = createItemSets(allTransactions.values());
         
         println("Activating external library to mine for closed itemsets");
-        //mine for frequent itemsets
+        //mine for frequent 
+        outputItemsets(allItemsets);
+    }
+    
+    private static void outputItemsets(ArrayList<ArrayList<TransactionDay>> allItemsets)
+    {
+        PrintWriter writer = new PrintWriter("data.dat", "UTF-8");
+        
+        for(ArrayList<TransactionDay> itemset : allItemsets)
+        {
+            String line = "";
+            
+            for (TransactionDay item : itemset)
+            {
+                line += item.industry + " ";
+            }
+            
+            line = line.substring(0, string.length() - 1);
+            
+            writer.println(line);
+        }
     }
     
     private static ArrayList<ArrayList<TransactionDay>> createItemSets(Collection<ArrayList<TransactionDay>> allTransactions)
