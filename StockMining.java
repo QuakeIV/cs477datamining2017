@@ -49,39 +49,90 @@ public class StockMining
     // Driving function
     private static void doAnalysis() throws SQLException, Exception
     {
-            ArrayList<String> industries = getIndustries();
+        ArrayList<String> industries = getIndustries();
+        
+        HashMap<String, ArrayList<TransactionDay>> allTransactions = new HashMap<String, ArrayList<TransactionDay>>();
+        
+        println("Getting start and end dates.");
+        String[] dates = getStartEndDates(industries);
+        println("Start Date: " + dates[0] + "... End Date: " + dates[1]);
             
-            HashMap<String, ArrayList<TransactionDay>> allTransactions = new HashMap<String, ArrayList<TransactionDay>>();
-            
-            String[] dates = getStartEndDates(industries);
-            println("Start Date: " + dates[0] + "... End Date: " + dates[1]);
-             
-            try
+        try
+        {
+            for(String industry: industries)
             {
-                for(String industry: industries)
-                {
-                    println("Reading data for: " + industry);
-                    allTransactions.put(industry, getIndustryData(industry, dates[0], dates[1]));
-                }
+                println("Reading data for: " + industry);
+                allTransactions.put(industry, getIndustryData(industry, dates[0], dates[1]));
             }
-            catch(SQLException e)
-            {
-                System.out.printf("SQLException: %s%nVendorError: %s%n", e.getMessage(), e.getSQLState(), e.getErrorCode());
-            }
-            
-            
-            //align data (discard any dates that dont exist for ALL industries)
-            alignData(allTransactions.values());
-            
-            //set situation values in transaction days
-            setupSituations(allTransactions.values());
-            
-            //determine relationships
-            analyzeData(allTransactions);
+        }
+        catch(SQLException e)
+        {
+            System.out.printf("SQLException: %s%nVendorError: %s%n", e.getMessage(), e.getSQLState(), e.getErrorCode());
+        }
+        
+        
+        //align data (discard any dates that dont exist for ALL industries)
+        println("Aligning data");
+        alignData(allTransactions.values());
+        
+        //set situation values in transaction days
+        println("Categorizing transactions");
+        setupSituations(allTransactions.values());
+        
+        //determine relationships
+        println("Creating Itemsets");
+        ArrayList<ArrayList<TransactionDay>> allItemsets = createItemSets(allTransactions.values());
+        
+        println("Activating external library to mine for closed itemsets");
+        //mine for frequent itemsets
     }
     
-    private static void analyzeData(HashMap<String, ArrayList<TransactionDay>> allTransactions)
+    private static ArrayList<ArrayList<TransactionDay>> createItemSets(Collection<ArrayList<TransactionDay>> allTransactions)
     {
+        ArrayList<Iterator<TransactionDay>> industryIterators = new ArrayList<Iterator<TransactionDay>>();
+    
+        for (ArrayList<TransactionDay> industry : allTransactions)
+        {
+            industryIterators.add(industry.iterator());
+        }
+        
+        boolean daysLeft = true;
+        
+        ArrayList<ArrayList<TransactionDay>> allItemsets = new ArrayList<ArrayList<TransactionDay>>();
+        
+        while(daysLeft)
+        {
+            ArrayList<TransactionDay> increasing = new ArrayList<TransactionDay>();
+            ArrayList<TransactionDay> decreasing = new ArrayList<TransactionDay>();
+            
+            for(Iterator<TransactionDay> iter : industryIterators)
+            {
+                TransactionDay day = iter.next();
+                if(day.situation == TransactionDay.Situation.INCREASING)
+                {
+                    increasing.add(day);
+                }
+                else if (day.situation == TransactionDay.Situation.DECREASING)
+                {
+                    decreasing.add(day);
+                }
+                
+                if(!iter.hasNext())
+                    daysLeft = false;
+            }
+            
+            if(!increasing.isEmpty())
+            {
+                allItemsets.add(increasing);
+            }
+            
+            if(!decreasing.isEmpty())
+            {
+                allItemsets.add(decreasing);
+            }
+        }
+        
+        return allItemsets;
     }
     
     private static void setupSituations(Collection<ArrayList<TransactionDay>> industries)
